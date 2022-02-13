@@ -45,7 +45,7 @@ def sample_recipe(user, **params):
     defaults.update(params)
 
     return Recipe.objects.create(
-        user = user,
+        user=user,
         **defaults
     )
 
@@ -62,6 +62,7 @@ class PublicRecipeApiTests(TestCase):
         response = self.client.get(RECIPE_URL)
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
 
 class PrivateRecipeApiTests(TestCase):
     """Contains test for the private api"""
@@ -139,7 +140,7 @@ class PrivateRecipeApiTests(TestCase):
 
         for key in payload.keys():
             self.assertEqual(getattr(createdRecipe, key), payload[key])
-    
+
     def test_create_recipe_with_tag(self):
         """Test creating recipe with tags"""
 
@@ -167,7 +168,7 @@ class PrivateRecipeApiTests(TestCase):
     def test_create_recipe_with_ingredients(self):
         """Test creating a recipe with ingredients"""
 
-        salt = sample_ingredient(user=self.user, name = 'salt')
+        salt = sample_ingredient(user=self.user, name='salt')
         sugar = sample_ingredient(user=self.user, name='sugar')
 
         payload = {
@@ -188,6 +189,54 @@ class PrivateRecipeApiTests(TestCase):
         self.assertEqual(ingredients.count(), 2)
         self.assertIn(sugar, ingredients)
         self.assertIn(salt, ingredients)
+
+    def test_filter_recipes_by_tags(self):
+        recipe1 = sample_recipe(user=self.user, title='recipe1')
+        recipe2 = sample_recipe(user=self.user, title='recipe2')
+        recipe3 = sample_recipe(user=self.user, title='recipe3')
+
+        tag_vegan = sample_tag(user=self.user, name='vegan')
+        tag_meat = sample_tag(user=self.user, name='meat')
+
+        recipe1.tags.add(tag_vegan)
+        recipe2.tags.add(tag_meat)
+
+        response = self.client.get(RECIPE_URL,
+                                   {'tags': f'{tag_vegan.id},{tag_meat.id}'}
+                                   )
+
+        serializer1 = RecipeSerializer(recipe1)
+        serializer2 = RecipeSerializer(recipe2)
+        serializer3 = RecipeSerializer(recipe3)
+
+        self.assertIn(serializer1.data, response.data)
+        self.assertIn(serializer2.data, response.data)
+        self.assertNotIn(serializer3.data, response.data)
+
+    def test_filter_recipes_by_ingredients(self):
+        """Test returning recipes with specific ingredients"""
+
+        recipe1 = sample_recipe(user=self.user, title='recipe1')
+        recipe2 = sample_recipe(user=self.user, title='recipe2')
+        recipe3 = sample_recipe(user=self.user, title='recipe3')
+
+        salt = sample_ingredient(user=self.user, name='salt')
+        sugar = sample_ingredient(user=self.user, name='sugar')
+
+        recipe1.ingredients.add(salt)
+        recipe2.ingredients.add(sugar)
+
+        response = self.client.get(RECIPE_URL,
+                                   {'ingredients': f'{salt.id},{sugar.id}'})
+
+        serializer1 = RecipeSerializer(recipe1)
+        serializer2 = RecipeSerializer(recipe2)
+        serializer3 = RecipeSerializer(recipe3)
+
+        self.assertIn(serializer1.data, response.data)
+        self.assertIn(serializer2.data, response.data)
+        self.assertNotIn(serializer3.data, response.data)
+
 
 class RecipeImageUploadTests(TestCase):
     """Contains tests for images"""
@@ -220,6 +269,3 @@ class RecipeImageUploadTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('image', response.data)
         self.assertTrue(os.path.exists(self.recipe.image.path))
-
-
-

@@ -28,7 +28,11 @@
 									"var response = pm.response.json();\r",
 									"\r",
 									"pm.environment.set(\"User.Name\", response.name);\r",
-									"pm.environment.set(\"User.EMail\", response.email);"
+									"pm.environment.set(\"User.EMail\", response.email);\r",
+									"\r",
+									"pm.environment.unset(\"Auth.Token\");\r",
+									"pm.environment.unset(\"User.Tags.Created\");\r",
+									"pm.environment.unset(\"User.Ingredients.Created\");"
 								],
 								"type": "text/javascript"
 							}
@@ -199,6 +203,21 @@
 					"item": [
 						{
 							"name": "Get all",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var response = pm.response.json();\r",
+											"\r",
+											"let ids = response.map(element => element.id)\r",
+											"\r",
+											"pm.environment.set(\"User.Tags.Created\", ids);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
 							"request": {
 								"method": "GET",
 								"header": [
@@ -218,13 +237,68 @@
 										"recipe",
 										"tags",
 										""
+									],
+									"query": [
+										{
+											"key": "assigned_only",
+											"value": "1",
+											"disabled": true
+										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "Get assigned only tags",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Token {{Auth.Token}}",
+												"type": "default"
+											}
+										],
+										"url": {
+											"raw": "{{Url}}/api/recipe/tags/?assigned_only=1",
+											"host": [
+												"{{Url}}"
+											],
+											"path": [
+												"api",
+												"recipe",
+												"tags",
+												""
+											],
+											"query": [
+												{
+													"key": "assigned_only",
+													"value": "1",
+													"description": "Returns only tags assigned to ingredients"
+												}
+											]
+										}
+									},
+									"_postman_previewlanguage": null,
+									"header": null,
+									"cookie": [],
+									"body": "[\r\n    {\r\n        \"id\": 5,\r\n        \"name\": \"Streamlined 4th generation project\"\r\n    }\r\n]"
+								}
+							]
 						},
 						{
 							"name": "Create",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
 							"request": {
 								"method": "POST",
 								"header": [
@@ -265,6 +339,30 @@
 					"item": [
 						{
 							"name": "Get all",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var response = pm.response.json();\r",
+											"\r",
+											"let ids = response.map(val => val.id)\r",
+											"\r",
+											"pm.environment.set(\"user.Ingredients.Created\", ids);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
 							"request": {
 								"method": "GET",
 								"header": [
@@ -275,7 +373,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{Url}}/api/recipe/ingredients/",
+									"raw": "{{Url}}/api/recipe/ingredients/?assigned_only=1",
 									"host": [
 										"{{Url}}"
 									],
@@ -284,10 +382,54 @@
 										"recipe",
 										"ingredients",
 										""
+									],
+									"query": [
+										{
+											"key": "assigned_only",
+											"value": "1",
+											"description": "Get ingredients only assigned to recipes\n"
+										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "Get assigned only",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Token {{Auth.Token}}",
+												"type": "default"
+											}
+										],
+										"url": {
+											"raw": "{{Url}}/api/recipe/ingredients/?assigned_only=1",
+											"host": [
+												"{{Url}}"
+											],
+											"path": [
+												"api",
+												"recipe",
+												"ingredients",
+												""
+											],
+											"query": [
+												{
+													"key": "assigned_only",
+													"value": "1",
+													"description": "Get ingredients only assigned to recipes\n"
+												}
+											]
+										}
+									},
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "[\n    {\n        \"id\": 5,\n        \"name\": \"parallelism\"\n    }\n]"
+								}
+							]
 						},
 						{
 							"name": "Create",
@@ -325,8 +467,181 @@
 							"response": []
 						}
 					]
+				},
+				{
+					"name": "Create recipe",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let res = pm.response.json()\r",
+									"\r",
+									"pm.environment.set(\"User.Recipe.LastCreatedId\", res.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{Auth.Token}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"title\": \"Chesecake\",\r\n    \"time_minutes\": {{$randomInt}},\r\n    \"price\": 0.99,\r\n    \"link\": \"{{$randomFoodImage}}\",\r\n    \"ingredients\": [{{user.Ingredients.Created}}],\r\n    \"tags\": [{{User.Tags.Created}}]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Url}}/api/recipe/recipe/",
+							"host": [
+								"{{Url}}"
+							],
+							"path": [
+								"api",
+								"recipe",
+								"recipe",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get list of recipes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{Auth.Token}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{Url}}/api/recipe/recipe/",
+							"host": [
+								"{{Url}}"
+							],
+							"path": [
+								"api",
+								"recipe",
+								"recipe",
+								""
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Filter by tags",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Token {{Auth.Token}}",
+										"type": "default"
+									}
+								],
+								"url": {
+									"raw": "{{Url}}/api/recipe/recipe/?tags=5,1",
+									"host": [
+										"{{Url}}"
+									],
+									"path": [
+										"api",
+										"recipe",
+										"recipe",
+										""
+									],
+									"query": [
+										{
+											"key": "tags",
+											"value": "5,1",
+											"description": "comma separated list of values"
+										}
+									]
+								}
+							},
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "[\n    {\n        \"id\": 6,\n        \"title\": \"Chesecake\",\n        \"time_minutes\": 305,\n        \"price\": \"0.99\",\n        \"link\": \"http://placeimg.com/640/480/food\",\n        \"tags\": [\n            5\n        ],\n        \"ingredients\": [\n            5\n        ]\n    },\n    {\n        \"id\": 7,\n        \"title\": \"Chesecake\",\n        \"time_minutes\": 305,\n        \"price\": \"0.99\",\n        \"link\": \"http://placeimg.com/640/480/food\",\n        \"tags\": [\n            1\n        ],\n        \"ingredients\": [\n            5\n        ]\n    }\n]"
+						},
+						{
+							"name": "Filter by ingredients",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Token {{Auth.Token}}",
+										"type": "default"
+									}
+								],
+								"url": {
+									"raw": "{{Url}}/api/recipe/recipe/?ingredients=5,3",
+									"host": [
+										"{{Url}}"
+									],
+									"path": [
+										"api",
+										"recipe",
+										"recipe",
+										""
+									],
+									"query": [
+										{
+											"key": "ingredients",
+											"value": "5,3",
+											"description": "comma separated list of values"
+										}
+									]
+								}
+							},
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "[\n    {\n        \"id\": 6,\n        \"title\": \"Chesecake\",\n        \"time_minutes\": 305,\n        \"price\": \"0.99\",\n        \"link\": \"http://placeimg.com/640/480/food\",\n        \"tags\": [\n            5\n        ],\n        \"ingredients\": [\n            5\n        ]\n    },\n    {\n        \"id\": 7,\n        \"title\": \"Chesecake\",\n        \"time_minutes\": 305,\n        \"price\": \"0.99\",\n        \"link\": \"http://placeimg.com/640/480/food\",\n        \"tags\": [\n            1\n        ],\n        \"ingredients\": [\n            3\n        ]\n    }\n]"
+						}
+					]
 				}
 			]
+		},
+		{
+			"name": "Get  details of one ingredient",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Token {{Auth.Token}}",
+						"type": "default"
+					}
+				],
+				"url": {
+					"raw": "{{Url}}/api/recipe/recipe/{{User.Recipe.LastCreatedId}}",
+					"host": [
+						"{{Url}}"
+					],
+					"path": [
+						"api",
+						"recipe",
+						"recipe",
+						"{{User.Recipe.LastCreatedId}}"
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }
