@@ -1,3 +1,6 @@
+import tempfile
+import os
+from PIL import Image
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -8,18 +11,27 @@ from recipe.serializers import RecipeSerializer, RecipeDetailSerializer
 
 RECIPE_URL = reverse('recipe:recipe-list')
 
+
+def image_upload_url(recipe_id):
+    """Return URL for image upload"""
+    return reverse('recipe:recipe-upload-image', args=[recipe_id])
+
+
 def sample_tag(user, name='default'):
     """Create and return an sample tag"""
     return Tag.objects.create(user=user, name=name)
 
+
 def sample_ingredient(user, name='default ingredient'):
     """Create and return an sample ingredient"""
-    return Ingredient.objects.create(user=user,name=name)
+    return Ingredient.objects.create(user=user, name=name)
+
 
 def detail_url(recipe_id):
     """Return recipe detail url"""
 
     return reverse('recipe:recipe-detail', args=[recipe_id])
+
 
 def sample_recipe(user, **params):
     """Create and return an sample recipe"""
@@ -176,3 +188,38 @@ class PrivateRecipeApiTests(TestCase):
         self.assertEqual(ingredients.count(), 2)
         self.assertIn(sugar, ingredients)
         self.assertIn(salt, ingredients)
+
+class RecipeImageUploadTests(TestCase):
+    """Contains tests for images"""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(
+            'mail@mail.com',
+            'pass123123'
+        )
+
+        self.client.force_authenticate(self.user)
+        self.recipe = sample_recipe(user=self.user)
+
+    def tearDown(self):
+        self.recipe.image.delete()
+
+    def test_upload_image_to_recipe(self):
+        """Test uploading an image to recipe"""
+
+        url = image_upload_url(self.recipe.id)
+        with tempfile.NamedTemporaryFile(suffix='.jpg') as ntf:
+            img = Image.new('RGB', (10, 10))
+            img.save(ntf, format='JPEG')
+            ntf.seek(0)
+            response = self.client.post(url, {'image': ntf}, format='multipart')
+
+        self.recipe.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('image', response.data)
+        self.assertTrue(os.path.exists(self.recipe.image.path))
+
+
+
